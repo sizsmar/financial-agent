@@ -16,6 +16,8 @@ const {
     getUserConfig 
 } = require('../database/models');
 
+const { parseExpenseMessage, isExpenseMessage } = require('../services/parser');
+
 class WhatsAppBot {
     constructor() {
         this.sock = null;
@@ -186,48 +188,17 @@ class WhatsAppBot {
         }
 
         // Procesamiento de gastos (texto libre)
-        const expenseData = this.parseExpenseMessage(messageText);
-        if (expenseData) {
-            return await this.registerExpense(userPhone, expenseData, messageText);
+        if (isExpenseMessage(messageText)) {
+            const expenseData = parseExpenseMessage(messageText);
+            if (expenseData) {
+                return await this.registerExpense(userPhone, expenseData, messageText);
+            }
         }
 
         // Mensaje no reconocido
         return `No entendi tu mensaje. Escribe "/help" para ver los comandos disponibles.\n\nTambien puedes escribir gastos como:\n- "gaste $300 en tacos"\n- "compre $50 de gasolina"\n- "pague 200 pesos por uber"`;
     }
 
-    parseExpenseMessage(text) {
-        // Regex patterns para detectar gastos
-        const patterns = [
-            /(?:gaste|gasto)\s*\$?(\d+(?:\.\d{2})?)\s*(?:en|de|por)?\s*(.+)/i,
-            /(?:compre|compro)\s*\$?(\d+(?:\.\d{2})?)\s*(?:en|de|por)?\s*(.+)/i,
-            /(?:pague|pago)\s*\$?(\d+(?:\.\d{2})?)\s*(?:en|de|por)?\s*(.+)/i,
-            /\$?(\d+(?:\.\d{2})?)\s*(?:en|de|por)\s*(.+)/i,
-            /(.+)\s*\$?(\d+(?:\.\d{2})?)$/i
-        ];
-
-        for (const pattern of patterns) {
-            const match = text.match(pattern);
-            if (match) {
-                let amount, description;
-                
-                if (pattern.source.includes('(.+)\\s*\\$?')) {
-                    // ultimo patron: descripcion primero, luego monto
-                    description = match[1].trim();
-                    amount = parseFloat(match[2]);
-                } else {
-                    // Otros patrones: monto primero, luego descripcion
-                    amount = parseFloat(match[1]);
-                    description = match[2]?.trim() || 'Gasto';
-                }
-
-                if (amount > 0 && description) {
-                    return { amount, description };
-                }
-            }
-        }
-
-        return null;
-    }
 
     async registerExpense(userPhone, expenseData, originalText) {
         try {

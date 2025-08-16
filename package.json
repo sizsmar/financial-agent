@@ -2,9 +2,14 @@
   "name": "financial-agent",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "src/app.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node src/app.js",
+    "dev": "nodemon src/app.js",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "test:db": "node -e \"require('./src/database/db').testConnection()\"",
+    "setup:db": "psql -U $DB_USER -d $DB_NAME -f config/database.sql",
+    "logs": "tail -f logs/app.log"
   },
   "keywords": [],
   "author": "",
