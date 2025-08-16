@@ -1,9 +1,11 @@
 const { pool } = require('./db');
+const { categorizeExpense } = require('../services/categorizer');
+const { checkAllAlerts } = require('../services/alerts');
 
-// Crear una nueva transacción
+// Crear una nueva transacciï¿½n
 async function createTransaction(userPhone, amount, description, category = null, source = 'manual', rawData = null) {
     try {
-        const categorizedCategory = category || await categorizeByKeywords(description);
+        const categorizedCategory = category || await categorizeExpense(description, userPhone);
         
         const query = `
             INSERT INTO transactions (user_phone, amount, description, category, source, raw_data)
@@ -14,7 +16,14 @@ async function createTransaction(userPhone, amount, description, category = null
         const values = [userPhone, amount, description, categorizedCategory, source, rawData];
         const result = await pool.query(query, values);
         
-        return result.rows[0];
+        // Verificar alertas despuÃ©s de crear la transacciÃ³n
+        const alerts = await checkAllAlerts(userPhone, amount, categorizedCategory);
+        
+        // Agregar alertas al resultado
+        const transaction = result.rows[0];
+        transaction.alerts = alerts;
+        
+        return transaction;
     } catch (error) {
         console.error('Error creating transaction:', error);
         throw error;
@@ -45,7 +54,7 @@ async function getTransactionsByUser(userPhone, dateRange = null) {
     }
 }
 
-// Obtener total gastado por período
+// Obtener total gastado por perï¿½odo
 async function getTotalSpentByPeriod(userPhone, period = 'day') {
     try {
         let dateCondition;
@@ -102,7 +111,7 @@ async function getTotalSpentByPeriod(userPhone, period = 'day') {
     }
 }
 
-// Obtener configuración de usuario
+// Obtener configuraciï¿½n de usuario
 async function getUserConfig(userPhone) {
     try {
         const query = `
@@ -113,7 +122,7 @@ async function getUserConfig(userPhone) {
         const result = await pool.query(query, [userPhone]);
         
         if (result.rows.length === 0) {
-            // Si no existe configuración, crear una por defecto
+            // Si no existe configuraciï¿½n, crear una por defecto
             return await createDefaultUserConfig(userPhone);
         }
         
@@ -124,7 +133,7 @@ async function getUserConfig(userPhone) {
     }
 }
 
-// Crear configuración por defecto para un usuario
+// Crear configuraciï¿½n por defecto para un usuario
 async function createDefaultUserConfig(userPhone) {
     try {
         const query = `
@@ -141,7 +150,7 @@ async function createDefaultUserConfig(userPhone) {
     }
 }
 
-// Actualizar configuración de usuario
+// Actualizar configuraciï¿½n de usuario
 async function updateUserConfig(userPhone, config) {
     try {
         const allowedFields = ['daily_limit', 'weekly_limit', 'monthly_limit', 'alert_thresholds', 'timezone'];
@@ -173,7 +182,7 @@ async function updateUserConfig(userPhone, config) {
         const result = await pool.query(query, values);
         
         if (result.rows.length === 0) {
-            // Si no existe el usuario, crear configuración primero
+            // Si no existe el usuario, crear configuraciï¿½n primero
             await createDefaultUserConfig(userPhone);
             return await updateUserConfig(userPhone, config);
         }
@@ -185,7 +194,7 @@ async function updateUserConfig(userPhone, config) {
     }
 }
 
-// Obtener todas las categorías
+// Obtener todas las categorï¿½as
 async function getCategories() {
     try {
         const query = `
@@ -238,7 +247,7 @@ async function categorizeByKeywords(description) {
     }
 }
 
-// Función auxiliar para obtener estadísticas de gastos
+// Funciï¿½n auxiliar para obtener estadï¿½sticas de gastos
 async function getSpendingStats(userPhone, period = 'month') {
     try {
         const totalData = await getTotalSpentByPeriod(userPhone, period);
@@ -273,7 +282,7 @@ async function getSpendingStats(userPhone, period = 'month') {
     }
 }
 
-// Función auxiliar para verificar si se debe enviar alerta
+// Funciï¿½n auxiliar para verificar si se debe enviar alerta
 async function shouldSendAlert(userPhone, period = 'day') {
     try {
         const stats = await getSpendingStats(userPhone, period);

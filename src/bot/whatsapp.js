@@ -214,8 +214,7 @@ class WhatsAppBot {
                 originalText
             );
 
-            // Verificar alertas
-            const alertCheck = await shouldSendAlert(userPhone, 'day');
+            // Las alertas ya vienen incluidas en la transacción
             
             let response = `*Gasto registrado*\n\n`;
             response += `*Monto:* $${amount}\n`;
@@ -223,9 +222,12 @@ class WhatsAppBot {
             response += `*Categoria:* ${transaction.category}\n`;
             response += `*Fecha:* ${new Date(transaction.date).toLocaleString('es-MX')}\n`;
 
-            // Agregar alerta si es necesario
-            if (alertCheck.shouldAlert) {
-                response += `\n*ALERTA:* Has gastado el ${alertCheck.stats.percentage}% de tu limite diario ($${alertCheck.stats.limit})`;
+            // Agregar alertas si existen
+            if (transaction.alerts && transaction.alerts.length > 0) {
+                response += '\n';
+                for (const alert of transaction.alerts) {
+                    response += `\n${alert.message}`;
+                }
             }
 
             // Agregar resumen del dia
